@@ -83,6 +83,7 @@ make_ipk() {
   mkdir -p "${data_dir}" "${control_dir}"
   cp -a "${data_src}/." "${data_dir}/"
   cp -a "${control_src}/." "${control_dir}/"
+  find "${control_dir}" -type f \( -name preinst -o -name postinst -o -name prerm -o -name postrm -o -name postinst-pkg \) -exec chmod 0755 {} +
 
   installed_size="$(du -sk "${data_dir}" | awk '{ print $1 }')"
   sed -i \
