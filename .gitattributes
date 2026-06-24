@@ -1,0 +1,11 @@
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.mod text eol=lf
+*.sum text eol=lf
+packages/**/control/* text eol=lf
+packages/**/root/etc/init.d/* text eol=lf
+packages/**/root/etc/config/* text eol=lf

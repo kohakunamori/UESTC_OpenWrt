@@ -1,0 +1,10 @@
+Package: qsh-telecom-autologin
+Version: 1.0.1-1
+Depends: libc
+Source: feeds/uestc_authclient/qsh-telecom-autologin
+SourceName: qsh-telecom-autologin
+Section: net
+SourceDateEpoch: 1764608399
+Architecture: x86_64
+Installed-Size: 2135323
+Description:  A command-line client for UESTC Telecom/Ruijie authentication.

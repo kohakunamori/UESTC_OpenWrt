@@ -1,0 +1,11 @@
+_captures/
+_unpacked/
+_upstream/
+build/
+dist/
+*.ipk
+*.tar.gz
+*.new
+*.bak-*
+.DS_Store
+Thumbs.db

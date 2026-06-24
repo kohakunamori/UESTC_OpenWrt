@@ -1,0 +1,10 @@
+Package: luci-i18n-uestc-authclient-zh-cn
+Version: git-26.175.00000-ruijie
+Depends: libc, luci-app-uestc-authclient
+Source: feeds/uestc_authclient/luci-app-uestc-authclient
+SourceName: luci-i18n-uestc-authclient-zh-cn
+Section: luci
+SourceDateEpoch: 1764608399
+Architecture: all
+Installed-Size: 2522
+Description:  Translation for luci-app-uestc-authclient - 简体中文 (Chinese Simplified)

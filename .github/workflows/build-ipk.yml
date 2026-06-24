@@ -1,0 +1,47 @@
+name: Build IPK
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.arch }} IPKs
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - x86_64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: packages/qsh-telecom-autologin/src/go.mod
+          cache-dependency-path: |
+            packages/qsh-telecom-autologin/src/go.sum
+            packages/go-nd-portal/src/go.sum
+
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install -y binutils tar gzip
+
+      - name: Build IPKs
+        env:
+          IPK_ARCH: ${{ matrix.arch }}
+          SOURCE_DATE_EPOCH: 1764608399
+        run: bash scripts/build-ipk.sh
+
+      - name: Upload IPKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: uestc-authclient-${{ matrix.arch }}-ipk
+          path: |
+            dist/*.ipk
+            dist/SHA256SUMS

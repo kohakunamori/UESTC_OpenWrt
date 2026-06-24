@@ -1,0 +1,72 @@
+###############################################################################
+# Basic Settings
+###############################################################################
+config system 'global'
+    option enabled '0'
+    # global logging settings
+    option log_rdays '7'
+
+###############################################################################
+# Client Sessions
+###############################################################################
+
+config session 'srun'
+    option enabled '0'
+    option lm_enabled '1'
+    option auth_type 'srun'
+    option auth_username ''
+    option auth_password ''
+    option auth_mode 'qsh-edu' # this is for srun clients only
+    option auth_host ''
+
+    option listen_interface 'wan'
+    option listen_check_interval '30'
+    list listen_hosts '223.5.5.5'
+    list listen_hosts '119.29.29.29'
+
+    option schedule_enabled '0'
+    # optional if enable is 0
+    option schedule_start '3'
+    option schedule_end '4'
+
+    option log_rdays '7'
+
+config session 'ct'
+    option enabled '0'
+    option lm_enabled '1'
+    option auth_type 'ct'
+    option auth_username ''
+    option auth_password ''
+    option auth_host '172.25.249.64'
+
+    option listen_interface 'wan'
+    option listen_check_interval '30'
+    list listen_hosts '223.5.5.5'
+    list listen_hosts '119.29.29.29'
+
+    option schedule_enabled '0'
+    # optional if enable is 0
+    option schedule_start '3'
+    option schedule_end '4'
+    
+    option log_rdays '7'
+
+config session 'ct_ruijie'
+    option enabled '0'
+    option lm_enabled '1'
+    option auth_type 'ct_ruijie'
+    option auth_username ''
+    option auth_password ''
+    option auth_host '110.184.24.61'
+
+    option listen_interface 'wan'
+    option listen_check_interval '30'
+    list listen_hosts '223.5.5.5'
+    list listen_hosts '119.29.29.29'
+
+    option schedule_enabled '0'
+    # optional if enable is 0
+    option schedule_start '3'
+    option schedule_end '4'
+    
+    option log_rdays '7'

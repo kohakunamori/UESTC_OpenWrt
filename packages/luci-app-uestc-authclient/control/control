@@ -1,0 +1,11 @@
+Package: luci-app-uestc-authclient
+Version: 3.3
+Depends: libc, qsh-telecom-autologin, go-nd-portal
+Source: feeds/uestc_authclient/luci-app-uestc-authclient
+SourceName: luci-app-uestc-authclient
+Section: luci
+SourceDateEpoch: 1764608399
+Maintainer: OpenWrt LuCI community
+Architecture: all
+Installed-Size: 20677
+Description:  LuCI App to manage UESTC Srun, legacy CT, and Telecom Ruijie authentication.
