@@ -43,7 +43,7 @@ jobs:
             packages/go-nd-portal/src/go.sum
 
       - name: Install packaging tools
-        run: sudo apt-get update && sudo apt-get install -y binutils tar gzip
+        run: sudo apt-get update && sudo apt-get install -y tar gzip
 
       - name: Build IPKs
         env:

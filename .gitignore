@@ -3,6 +3,7 @@ _unpacked/
 _upstream/
 build/
 dist/
+release_latest/
 *.ipk
 *.tar.gz
 *.new

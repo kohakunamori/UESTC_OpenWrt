@@ -94,11 +94,15 @@ make_ipk() {
   make_tar "${control_dir}" "${work}/control.tar.gz"
   printf '2.0\n' > "${work}/debian-binary"
 
+  rm -f "${output}"
   (
     cd "${work}"
-    rm -f "${output}"
-    ar rcs "${output}" debian-binary control.tar.gz data.tar.gz >/dev/null
+    tar --sort=name \
+      --mtime="@${SOURCE_DATE_EPOCH}" \
+      --owner=0 --group=0 --numeric-owner \
+      -czf "${output}" ./debian-binary ./data.tar.gz ./control.tar.gz
   )
+  tar -tzf "${output}" >/dev/null
   echo "Built ${output}"
 }
 
