@@ -1,4 +1,4 @@
-name: Build IPK
+name: Build Packages
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ${{ matrix.arch }} IPKs
+    name: Build ${{ matrix.arch }} packages
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -58,20 +58,25 @@ jobs:
             packages/go-nd-portal/src/go.sum
 
       - name: Install packaging tools
-        run: sudo apt-get update && sudo apt-get install -y tar gzip
+        run: sudo apt-get update && sudo apt-get install -y curl tar gzip
 
-      - name: Build IPKs
+      - name: Install apk-tools v3
+        run: bash scripts/install-apk-tools.sh
+
+      - name: Build packages
         env:
           IPK_ARCH: ${{ matrix.arch }}
+          BUILD_APK: "1"
           SOURCE_DATE_EPOCH: 1764608399
         run: bash scripts/build-ipk.sh
 
-      - name: Upload IPKs
+      - name: Upload packages
         uses: actions/upload-artifact@v6
         with:
-          name: uestc-authclient-${{ matrix.arch }}-ipk
+          name: uestc-authclient-${{ matrix.arch }}-packages
           path: |
             dist/*.ipk
+            dist/*.apk
             dist/SHA256SUMS
 
   release:
@@ -87,7 +92,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Download IPK artifacts
+      - name: Download package artifacts
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh run download "$GITHUB_RUN_ID" --dir release-artifacts
@@ -96,7 +101,8 @@ jobs:
         run: |
           mkdir -p release
           find release-artifacts -type f -name '*.ipk' -exec cp -f {} release/ \;
-          (cd release && sha256sum *.ipk > SHA256SUMS)
+          find release-artifacts -type f -name '*.apk' -exec cp -f {} release/ \;
+          (cd release && sha256sum *.ipk *.apk > SHA256SUMS)
           cat > release/RELEASE_NOTES.md <<EOF
           ## 发布说明
 
@@ -113,10 +119,14 @@ jobs:
           | 包名 | 作用 | 适用对象 |
           | --- | --- | --- |
           | \`qsh-telecom-autologin_<version>_<arch>.ipk\` | 电信认证命令行客户端，支持旧版电信 portal 和新版电信锐捷 / CAS portal。 | 使用 \`电信锐捷认证 (qsh-telecom-ruijie)\` 或旧版 \`CT authentication method\` 的用户。必须选择与路由器一致的 \`<arch>\`。 |
+          | \`qsh-telecom-autologin_<apk-version>_<arch>.apk\` | APKv3 格式的电信认证命令行客户端。 | OpenWrt 25.12 及更新版本使用 apk 包管理时安装。必须选择与路由器一致的 \`<arch>\`。 |
           | \`go-nd-portal_<version>_<arch>.ipk\` | Srun 认证命令行客户端。 | 使用 \`Srun authentication method\` 的用户。必须选择与路由器一致的 \`<arch>\`。 |
+          | \`go-nd-portal_<apk-version>_<arch>.apk\` | APKv3 格式的 Srun 认证命令行客户端。 | OpenWrt 25.12 及更新版本使用 apk 包管理时安装。必须选择与路由器一致的 \`<arch>\`。 |
           | \`luci-app-uestc-authclient_<version>_all.ipk\` | LuCI 管理界面、认证调度脚本、网络监控脚本和默认 UCI 配置。 | 所有需要在 LuCI 中管理认证会话的用户。\`all\` 表示不区分 CPU 架构。 |
+          | \`luci-app-uestc-authclient_<apk-version>_noarch.apk\` | APKv3 格式的 LuCI 管理界面和认证调度组件。 | OpenWrt 25.12 及更新版本使用 apk 包管理时安装。\`noarch\` 表示不区分 CPU 架构。 |
           | \`luci-i18n-uestc-authclient-zh-cn_<version>_all.ipk\` | LuCI 简体中文语言包。 | 需要中文界面的用户。\`all\` 表示不区分 CPU 架构。 |
-          | \`SHA256SUMS\` | Release 中所有 IPK 文件的 SHA256 校验值。 | 下载后校验文件完整性。 |
+          | \`luci-i18n-uestc-authclient-zh-cn_<apk-version>_noarch.apk\` | APKv3 格式的 LuCI 简体中文语言包。 | OpenWrt 25.12 及更新版本使用 apk 包管理且需要中文界面的用户。 |
+          | \`SHA256SUMS\` | Release 中所有 IPK/APK 文件的 SHA256 校验值。 | 下载后校验文件完整性。 |
 
           ## 推荐安装组合
 
@@ -129,6 +139,15 @@ jobs:
           opkg install luci-i18n-uestc-authclient-zh-cn_*_all.ipk
           \`\`\`
 
+          OpenWrt 25.12 及更新版本使用 apk 包：
+
+          \`\`\`sh
+          apk add --allow-untrusted ./qsh-telecom-autologin_*_<arch>.apk
+          apk add --allow-untrusted ./go-nd-portal_*_<arch>.apk
+          apk add --allow-untrusted ./luci-app-uestc-authclient_*_noarch.apk
+          apk add --allow-untrusted ./luci-i18n-uestc-authclient-zh-cn_*_noarch.apk
+          \`\`\`
+
           其中 \`<arch>\` 通过路由器上的以下命令确认：
 
           \`\`\`sh
@@ -137,7 +156,7 @@ jobs:
 
           ## 兼容性说明
 
-          Release 中的 IPK 面向 opkg/IPK 系 OpenWrt 固件。CI 会覆盖多个常见 OpenWrt 架构，Go 客户端以静态方式交叉编译；\`all\` 包不区分 CPU 架构，但仍需要固件提供 LuCI、rpcd、uci 和 procd 环境。使用 apk 包管理的 OpenWrt 分支需要单独打包。
+          Release 同时发布 opkg/IPK 包和 APKv3 包。OpenWrt 24.10 及更旧版本通常使用 \`opkg install *.ipk\`；OpenWrt 25.12 及更新版本使用 \`apk add --allow-untrusted ./*.apk\`。CI 会覆盖多个常见 OpenWrt 架构，Go 客户端以静态方式交叉编译；LuCI 包仍需要固件提供 LuCI、rpcd、uci 和 procd 环境。
 
           EOF
           ls -lh release
@@ -150,7 +169,7 @@ jobs:
           git tag -f latest "$GITHUB_SHA"
           git push -f origin latest
           short_sha="${GITHUB_SHA::7}"
-          gh release create latest release/*.ipk release/SHA256SUMS \
+          gh release create latest release/*.ipk release/*.apk release/SHA256SUMS \
             --title "Latest build (${short_sha})" \
             --notes-file release/RELEASE_NOTES.md \
             --latest

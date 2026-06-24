@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${ROOT_DIR}/build"
 DIST_DIR="${ROOT_DIR}/dist"
 IPK_ARCH="${IPK_ARCH:-x86_64}"
+BUILD_APK="${BUILD_APK:-0}"
 SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(date +%s)}"
 export GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
 
@@ -79,6 +80,46 @@ control_value() {
   awk -F': ' -v k="${key}" '$1 == k { print $2; exit }' "${file}"
 }
 
+control_depends_as_apk_args() {
+  local file="$1"
+  local deps dep
+  deps="$(control_value "${file}" "Depends" | tr ',' ' ')"
+  for dep in ${deps}; do
+    dep="${dep%%(*}"
+    dep="${dep%%<*}"
+    dep="${dep%%>*}"
+    dep="${dep%%=*}"
+    dep="$(printf '%s' "${dep}" | tr -d '[:space:]')"
+    [ -n "${dep}" ] && printf '%s\0' "--info" "depends:${dep}"
+  done
+}
+
+apk_version_for() {
+  local pkg="$1"
+  local version="$2"
+
+  case "${pkg}:${version}" in
+    qsh-telecom-autologin:1.0.1-1)
+      printf '1.0.1-r1'
+      ;;
+    go-nd-portal:0.3.1-dirty-20250903-1)
+      printf '0.3.1_git20250903-r1'
+      ;;
+    luci-app-uestc-authclient:*)
+      printf '%s-r1' "${version}"
+      ;;
+    luci-i18n-uestc-authclient-zh-cn:git-26.175.00001-ruijie)
+      printf '26.175.1_git-r1'
+      ;;
+    *:*-*)
+      printf '%s' "${version}" | sed -E 's/-([0-9]+)$/-r\1/'
+      ;;
+    *)
+      printf '%s' "${version}"
+      ;;
+  esac
+}
+
 make_tar() {
   local source_dir="$1"
   local output_file="$2"
@@ -134,6 +175,118 @@ make_ipk() {
   echo "Built ${output}"
 }
 
+make_apk_post_script() {
+  local pkg="$1"
+  local script="$2"
+
+  case "${pkg}" in
+    luci-app-uestc-authclient)
+      cat > "${script}" <<'EOF'
+#!/bin/sh
+[ -x /etc/uci-defaults/99-uestc-authclient-ruijie-migrate ] && {
+    /etc/uci-defaults/99-uestc-authclient-ruijie-migrate || true
+    rm -f /etc/uci-defaults/99-uestc-authclient-ruijie-migrate
+}
+rm -f /tmp/luci-indexcache.*
+rm -rf /tmp/luci-modulecache/
+killall -HUP rpcd 2>/dev/null || true
+exit 0
+EOF
+      ;;
+    luci-i18n-uestc-authclient-zh-cn)
+      cat > "${script}" <<'EOF'
+#!/bin/sh
+[ -x /etc/uci-defaults/luci-i18n-uestc-authclient-zh-cn ] && {
+    /etc/uci-defaults/luci-i18n-uestc-authclient-zh-cn || true
+    rm -f /etc/uci-defaults/luci-i18n-uestc-authclient-zh-cn
+}
+uci set luci.languages.zh_cn='简体中文 (Chinese Simplified)' 2>/dev/null || true
+uci commit luci 2>/dev/null || true
+rm -f /tmp/luci-indexcache.*
+rm -rf /tmp/luci-modulecache/
+killall -HUP rpcd 2>/dev/null || true
+exit 0
+EOF
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+
+  chmod 0755 "${script}"
+  return 0
+}
+
+make_apk() {
+  local pkg="$1"
+  local apk_arch="$2"
+  local data_src="$3"
+  local control_src="$4"
+
+  [ "${BUILD_APK}" = "1" ] || return 0
+
+  command -v apk >/dev/null 2>&1 || {
+    echo "BUILD_APK=1 requires apk-tools v3 in PATH." >&2
+    exit 1
+  }
+
+  local work="${BUILD_DIR}/apk-${pkg}-${apk_arch}"
+  local data_dir="${work}/data"
+  local script_dir="${work}/scripts"
+  local version apk_version installed_size description maintainer output
+  local dep_args=()
+  local script_args=()
+
+  version="$(control_value "${control_src}/control" "Version")"
+  apk_version="$(apk_version_for "${pkg}" "${version}")"
+  description="$(control_value "${control_src}/control" "Description" | sed -E 's/^ +//; s/"/'\''/g')"
+  maintainer="$(control_value "${control_src}/control" "Maintainer")"
+  [ -n "${maintainer}" ] || maintainer="OpenWrt LuCI community"
+
+  mkdir -p "${data_dir}" "${script_dir}"
+  cp -a "${data_src}/." "${data_dir}/"
+
+  if [ "${pkg}" = "luci-app-uestc-authclient" ]; then
+    mkdir -p "${data_dir}/etc/apk/protected_paths.d"
+    printf '!etc/config/uestc_authclient\n' > "${data_dir}/etc/apk/protected_paths.d/luci-app-uestc-authclient.list"
+  fi
+
+  installed_size="$(du -sk "${data_dir}" | awk '{ print $1 }')"
+  output="${DIST_DIR}/${pkg}_${apk_version}_${apk_arch}.apk"
+
+  while IFS= read -r -d '' arg; do
+    dep_args+=("${arg}")
+  done < <(control_depends_as_apk_args "${control_src}/control")
+
+  if make_apk_post_script "${pkg}" "${script_dir}/post-install"; then
+    script_args+=(--script "post-install:${script_dir}/post-install")
+    script_args+=(--script "post-upgrade:${script_dir}/post-install")
+  fi
+
+  rm -f "${output}"
+  apk mkpkg \
+    --info "name:${pkg}" \
+    --info "version:${apk_version}" \
+    --info "description:${description}" \
+    --info "arch:${apk_arch}" \
+    --info "license:GPL-2.0-or-later" \
+    --info "origin:${pkg}" \
+    --info "maintainer:${maintainer}" \
+    --info "url:https://github.com/kohakunamori/UESTC_OpenWrt" \
+    --info "build-time:${SOURCE_DATE_EPOCH}" \
+    --info "installed-size:${installed_size}" \
+    "${dep_args[@]}" \
+    "${script_args[@]}" \
+    --files "${data_dir}" \
+    --output "${output}" >/dev/null
+
+  printf 'ADBd' | cmp -n 4 - "${output}" >/dev/null || {
+    echo "Generated APK is not APKv3/ADB format: ${output}" >&2
+    exit 1
+  }
+  echo "Built ${output}"
+}
+
 build_go_package() {
   local pkg="$1"
   local binary="$2"
@@ -149,6 +302,7 @@ build_go_package() {
   )
   chmod 0755 "${data_dir}/usr/bin/${binary}"
   make_ipk "${pkg}" "${IPK_ARCH}" "${data_dir}" "${ROOT_DIR}/packages/${pkg}/control"
+  make_apk "${pkg}" "${IPK_ARCH}" "${data_dir}" "${ROOT_DIR}/packages/${pkg}/control"
 }
 
 build_root_package() {
@@ -165,6 +319,11 @@ build_root_package() {
   find "${data_dir}/etc/uci-defaults" -type f -exec chmod 0755 {} + 2>/dev/null || true
 
   make_ipk "${pkg}" "${arch}" "${data_dir}" "${ROOT_DIR}/packages/${pkg}/control"
+  if [ "${arch}" = "all" ]; then
+    make_apk "${pkg}" "noarch" "${data_dir}" "${ROOT_DIR}/packages/${pkg}/control"
+  else
+    make_apk "${pkg}" "${arch}" "${data_dir}" "${ROOT_DIR}/packages/${pkg}/control"
+  fi
 }
 
 build_go_package "qsh-telecom-autologin" "qsh-telecom-autologin"
@@ -172,5 +331,14 @@ build_go_package "go-nd-portal" "go-nd-portal"
 build_root_package "luci-app-uestc-authclient" "all"
 build_root_package "luci-i18n-uestc-authclient-zh-cn" "all"
 
-(cd "${DIST_DIR}" && sha256sum *.ipk | sed 's/ \*/  /' > SHA256SUMS)
+(
+  cd "${DIST_DIR}"
+  shopt -s nullglob
+  packages=( *.ipk *.apk )
+  [ "${#packages[@]}" -gt 0 ] || {
+    echo "No packages were built." >&2
+    exit 1
+  }
+  sha256sum "${packages[@]}" | sed 's/ \*/  /' > SHA256SUMS
+)
 echo "Checksums written to ${DIST_DIR}/SHA256SUMS"

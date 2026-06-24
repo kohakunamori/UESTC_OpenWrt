@@ -5,8 +5,11 @@ build/
 dist/
 release_latest/
 *.ipk
+*.apk
 *.tar.gz
 *.new
 *.bak-*
 .DS_Store
 Thumbs.db
+original/
+.tools/
