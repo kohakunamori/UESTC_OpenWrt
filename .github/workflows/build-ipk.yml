@@ -80,7 +80,7 @@ jobs:
             dist/SHA256SUMS
 
   release:
-    name: Publish latest release
+    name: Publish release
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
@@ -173,7 +173,7 @@ jobs:
           EOF
           ls -lh release
 
-      - name: Publish latest release
+      - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
