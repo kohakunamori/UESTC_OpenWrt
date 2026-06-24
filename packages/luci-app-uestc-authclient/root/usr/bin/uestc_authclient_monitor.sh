@@ -91,16 +91,20 @@ init_config() {
     ############################
     # TODO: add MAX_WAIT setting in cbi
     MAX_WAIT=30
-    if [ "$AUTH_TYPE" = "ct" ] || [ "$AUTH_TYPE" = "ct_ruijie" ]; then
-        AUTH_PARAMS="-t $AUTH_TYPE -i $INTERFACE -s $HOST -u $USERNAME -p $PASSWORD -w $MAX_WAIT"
-    elif [ "$AUTH_TYPE" = "srun" ]; then
-        AUTH_MODE=$(uci_get uestc_authclient "$SESSION_ID" auth_mode qsh-edu)
-        AUTH_PARAMS="-t srun -i $INTERFACE -s $HOST -u $USERNAME -p $PASSWORD \
-                     -m $AUTH_MODE -w $MAX_WAIT"
-    else
-        log_printf "$MSG_UNKNOWN_CLIENT_TYPE" "$AUTH_TYPE"
-        exit 1
-    fi
+    case "$AUTH_TYPE" in
+        ct|qsh-telecom-ruijie|ct_ruijie)
+            AUTH_PARAMS="-t $AUTH_TYPE -i $INTERFACE -s $HOST -u $USERNAME -p $PASSWORD -w $MAX_WAIT"
+            ;;
+        srun)
+            AUTH_MODE=$(uci_get uestc_authclient "$SESSION_ID" auth_mode qsh-edu)
+            AUTH_PARAMS="-t srun -i $INTERFACE -s $HOST -u $USERNAME -p $PASSWORD \
+                         -m $AUTH_MODE -w $MAX_WAIT"
+            ;;
+        *)
+            log_printf "$MSG_UNKNOWN_CLIENT_TYPE" "$AUTH_TYPE"
+            exit 1
+            ;;
+    esac
 
     ############################
     # Define files and variables

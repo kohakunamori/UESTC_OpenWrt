@@ -97,7 +97,7 @@ jobs:
 
           | 包名 | 作用 | 适用对象 |
           | --- | --- | --- |
-          | \`qsh-telecom-autologin_<version>_<arch>.ipk\` | 电信认证命令行客户端，支持旧版电信 portal 和新版电信锐捷 / CAS portal。 | 使用 \`电信锐捷认证\` 或旧版 \`CT authentication method\` 的用户。必须选择与路由器一致的 \`<arch>\`。 |
+          | \`qsh-telecom-autologin_<version>_<arch>.ipk\` | 电信认证命令行客户端，支持旧版电信 portal 和新版电信锐捷 / CAS portal。 | 使用 \`电信锐捷认证 (qsh-telecom-ruijie)\` 或旧版 \`CT authentication method\` 的用户。必须选择与路由器一致的 \`<arch>\`。 |
           | \`go-nd-portal_<version>_<arch>.ipk\` | Srun 认证命令行客户端。 | 使用 \`Srun authentication method\` 的用户。必须选择与路由器一致的 \`<arch>\`。 |
           | \`luci-app-uestc-authclient_<version>_all.ipk\` | LuCI 管理界面、认证调度脚本、网络监控脚本和默认 UCI 配置。 | 所有需要在 LuCI 中管理认证会话的用户。\`all\` 表示不区分 CPU 架构。 |
           | \`luci-i18n-uestc-authclient-zh-cn_<version>_all.ipk\` | LuCI 简体中文语言包。 | 需要中文界面的用户。\`all\` 表示不区分 CPU 架构。 |
@@ -123,7 +123,7 @@ jobs:
           新版电信锐捷认证一般选择：
 
           \`\`\`text
-          Authentication method: 电信锐捷认证
+          Authentication method: 电信锐捷认证 (qsh-telecom-ruijie)
           Authentication Host: 锐捷 - 清水河宿舍 (110.184.24.61)
           Interface: eth1
           \`\`\`

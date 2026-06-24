@@ -40,14 +40,14 @@ http://192.168.1.1/cgi-bin/luci/admin/services/uestc-authclient
 
 | 认证方式 | 适用入口 | 默认认证服务器 |
 | --- | --- | --- |
-| `电信锐捷认证` | 新版电信锐捷 / CAS portal | `110.184.24.61` |
+| `电信锐捷认证 (qsh-telecom-ruijie)` | 新版电信锐捷 / CAS portal | `锐捷 - 清水河宿舍 (110.184.24.61)` |
 | `CT authentication method (legacy qsh-telecom-autologin)` | 旧版电信 portal | `172.25.249.64` |
 | `Srun authentication method (go-nd-portal)` | Srun 认证 | 按校区和运营商选择 |
 
 新版电信锐捷认证建议配置：
 
 ```text
-Authentication method: 电信锐捷认证
+Authentication method: 电信锐捷认证 (qsh-telecom-ruijie)
 Authentication Host: 锐捷 - 清水河宿舍 (110.184.24.61)
 Interface: eth1
 Heartbeat hosts: 223.5.5.5, 119.29.29.29
@@ -82,7 +82,7 @@ opkg install --force-reinstall luci-app-uestc-authclient_*.ipk
 opkg install --force-reinstall luci-i18n-uestc-authclient-zh-cn_*.ipk
 ```
 
-`/etc/config/uestc_authclient` 被声明为配置文件，正常升级不会覆盖已有账号、密码和会话配置。新版包会在缺失时自动补充 `ct_ruijie` 会话模板。
+`/etc/config/uestc_authclient` 被声明为配置文件，正常升级不会覆盖已有账号、密码和会话配置。新版包会在缺失时自动补充 `qsh_telecom_ruijie` 会话模板，并把旧的 `ct_ruijie` 会话迁移到新名称。
 
 ## Releases 发布规律
 

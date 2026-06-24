@@ -51,10 +51,10 @@ config session 'ct'
     
     option log_rdays '7'
 
-config session 'ct_ruijie'
+config session 'qsh_telecom_ruijie'
     option enabled '0'
     option lm_enabled '1'
-    option auth_type 'ct_ruijie'
+    option auth_type 'qsh-telecom-ruijie'
     option auth_username ''
     option auth_password ''
     option auth_host '110.184.24.61'

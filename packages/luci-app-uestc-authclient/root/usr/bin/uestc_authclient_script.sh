@@ -2,7 +2,7 @@
 #
 # Auto‑login helper script
 # ------------------------------------------------------------
-# Handles CT/Ruijie (`qsh-telecom-autologin`) and SRUN (`go-nd-portal`)
+# Handles Telecom/Ruijie (`qsh-telecom-autologin`) and SRUN (`go-nd-portal`)
 # clients on a given network interface.
 #
 # Exit status:
@@ -18,7 +18,7 @@
 usage() {
     printf "Usage: %s -t <client_type> -i <interface> -s <server> " "$0"
     printf "-u <username> -p <password> [-m <auth_mode>] [-w <wait_sec>]\n"
-    printf "  -t: Client type (ct, ct_ruijie, or srun)\n"
+    printf "  -t: Client type (ct, qsh-telecom-ruijie, ct_ruijie, or srun)\n"
     printf "  -i: Network interface (default: wan)\n"
     printf "  -s: Authentication server / host\n"
     printf "  -u: Username\n"
@@ -68,9 +68,9 @@ done
 # Determine client binary
 ###############################################################################
 case "$CLIENT_TYPE" in
-    ct|ct_ruijie) AUTH_BIN="/usr/bin/qsh-telecom-autologin" ;;
-    srun)         AUTH_BIN="/usr/bin/go-nd-portal"          ;;
-    *)            printf "ERROR: Unknown client type: %s\n" "$CLIENT_TYPE"; exit 1 ;;
+    ct|qsh-telecom-ruijie|ct_ruijie) AUTH_BIN="/usr/bin/qsh-telecom-autologin" ;;
+    srun)                            AUTH_BIN="/usr/bin/go-nd-portal"          ;;
+    *)                               printf "ERROR: Unknown client type: %s\n" "$CLIENT_TYPE"; exit 1 ;;
 esac
 
 command -v ip >/dev/null 2>&1 || {
@@ -137,7 +137,7 @@ fi
 ###############################################################################
 # Execute login according to client type
 ###############################################################################
-if [ "$CLIENT_TYPE" = "ct" ] || [ "$CLIENT_TYPE" = "ct_ruijie" ]; then
+if [ "$CLIENT_TYPE" = "ct" ] || [ "$CLIENT_TYPE" = "qsh-telecom-ruijie" ] || [ "$CLIENT_TYPE" = "ct_ruijie" ]; then
     LOGIN_OUTPUT=$("$AUTH_BIN" \
         -name "$USERNAME" -passwd "$PASSWORD" \
         -host "$HOST" -localip "$INTERFACE_IP" 2>&1)

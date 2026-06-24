@@ -1,5 +1,5 @@
 Package: luci-app-uestc-authclient
-Version: 3.3.1
+Version: 3.3.2
 Depends: libc, qsh-telecom-autologin, go-nd-portal
 Source: feeds/uestc_authclient/luci-app-uestc-authclient
 SourceName: luci-app-uestc-authclient

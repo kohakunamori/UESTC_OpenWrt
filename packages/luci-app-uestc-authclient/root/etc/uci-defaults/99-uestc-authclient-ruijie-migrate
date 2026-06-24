@@ -1,8 +1,18 @@
 #!/bin/sh
 
 changed=0
+ruijie_section="qsh_telecom_ruijie"
+legacy_ruijie_section="ct_ruijie"
+ruijie_type="qsh-telecom-ruijie"
 
-if ! uci -q get uestc_authclient.ct_ruijie >/dev/null 2>&1; then
+if uci -q get "uestc_authclient.$legacy_ruijie_section" >/dev/null 2>&1 &&
+   ! uci -q get "uestc_authclient.$ruijie_section" >/dev/null 2>&1; then
+    if uci rename "uestc_authclient.$legacy_ruijie_section=$ruijie_section" 2>/dev/null; then
+        changed=1
+    fi
+fi
+
+if ! uci -q get "uestc_authclient.$ruijie_section" >/dev/null 2>&1; then
     old_user="$(uci -q get uestc_authclient.ct.auth_username || true)"
     old_pass="$(uci -q get uestc_authclient.ct.auth_password || true)"
     old_iface="$(uci -q get uestc_authclient.ct.listen_interface || true)"
@@ -11,23 +21,33 @@ if ! uci -q get uestc_authclient.ct_ruijie >/dev/null 2>&1; then
     [ -n "$old_iface" ] || old_iface="wan"
     [ -n "$old_lm" ] || old_lm="1"
 
-    uci set uestc_authclient.ct_ruijie='session'
-    uci set uestc_authclient.ct_ruijie.enabled='0'
-    uci set uestc_authclient.ct_ruijie.lm_enabled="$old_lm"
-    uci set uestc_authclient.ct_ruijie.auth_type='ct_ruijie'
-    uci set uestc_authclient.ct_ruijie.auth_host='110.184.24.61'
-    uci set uestc_authclient.ct_ruijie.listen_interface="$old_iface"
-    uci set uestc_authclient.ct_ruijie.listen_check_interval='30'
-    uci -q delete uestc_authclient.ct_ruijie.listen_hosts
-    uci add_list uestc_authclient.ct_ruijie.listen_hosts='223.5.5.5'
-    uci add_list uestc_authclient.ct_ruijie.listen_hosts='119.29.29.29'
-    uci set uestc_authclient.ct_ruijie.schedule_enabled='0'
-    uci set uestc_authclient.ct_ruijie.schedule_start='3'
-    uci set uestc_authclient.ct_ruijie.schedule_end='4'
-    uci set uestc_authclient.ct_ruijie.log_rdays='7'
+    uci set "uestc_authclient.$ruijie_section=session"
+    uci set "uestc_authclient.$ruijie_section.enabled=0"
+    uci set "uestc_authclient.$ruijie_section.lm_enabled=$old_lm"
+    uci set "uestc_authclient.$ruijie_section.auth_type=$ruijie_type"
+    uci set "uestc_authclient.$ruijie_section.auth_host=110.184.24.61"
+    uci set "uestc_authclient.$ruijie_section.listen_interface=$old_iface"
+    uci set "uestc_authclient.$ruijie_section.listen_check_interval=30"
+    uci -q delete "uestc_authclient.$ruijie_section.listen_hosts"
+    uci add_list "uestc_authclient.$ruijie_section.listen_hosts=223.5.5.5"
+    uci add_list "uestc_authclient.$ruijie_section.listen_hosts=119.29.29.29"
+    uci set "uestc_authclient.$ruijie_section.schedule_enabled=0"
+    uci set "uestc_authclient.$ruijie_section.schedule_start=3"
+    uci set "uestc_authclient.$ruijie_section.schedule_end=4"
+    uci set "uestc_authclient.$ruijie_section.log_rdays=7"
 
-    [ -n "$old_user" ] && uci set uestc_authclient.ct_ruijie.auth_username="$old_user"
-    [ -n "$old_pass" ] && uci set uestc_authclient.ct_ruijie.auth_password="$old_pass"
+    [ -n "$old_user" ] && uci set "uestc_authclient.$ruijie_section.auth_username=$old_user"
+    [ -n "$old_pass" ] && uci set "uestc_authclient.$ruijie_section.auth_password=$old_pass"
+    changed=1
+fi
+
+if [ "$(uci -q get "uestc_authclient.$ruijie_section.auth_type" || true)" = "ct_ruijie" ]; then
+    uci set "uestc_authclient.$ruijie_section.auth_type=$ruijie_type"
+    changed=1
+fi
+
+if [ "$(uci -q get "uestc_authclient.$ruijie_section.auth_host" || true)" = "" ]; then
+    uci set "uestc_authclient.$ruijie_section.auth_host=110.184.24.61"
     changed=1
 fi
 
