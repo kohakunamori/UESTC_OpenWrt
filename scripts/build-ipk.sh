@@ -8,10 +8,35 @@ IPK_ARCH="${IPK_ARCH:-x86_64}"
 SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(date +%s)}"
 export GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
 
+GOARM=""
+GOMIPS=""
+
 case "${IPK_ARCH}" in
-  x86_64) GOARCH="amd64" ;;
-  aarch64) GOARCH="arm64" ;;
-  arm_cortex-a7_neon-vfpv4|arm_cortex-a9|arm_arm1176jzf-s_vfp) GOARCH="arm" ;;
+  x86_64)
+    GOARCH="amd64"
+    ;;
+  aarch64|aarch64_generic|aarch64_cortex-a53|aarch64_cortex-a72|aarch64_cortex-a76)
+    GOARCH="arm64"
+    ;;
+  arm_arm1176jzf-s_vfp)
+    GOARCH="arm"
+    GOARM="6"
+    ;;
+  arm_cortex-a5_vfpv4|arm_cortex-a7|arm_cortex-a7_neon-vfpv4|arm_cortex-a8_vfpv3|arm_cortex-a9|arm_cortex-a15_neon-vfpv4|arm_cortex-a53_neon-vfpv4)
+    GOARCH="arm"
+    GOARM="7"
+    ;;
+  mips_24kc)
+    GOARCH="mips"
+    GOMIPS="softfloat"
+    ;;
+  mipsel_24kc|mipsel_74kc)
+    GOARCH="mipsle"
+    GOMIPS="softfloat"
+    ;;
+  riscv64|riscv64_riscv64)
+    GOARCH="riscv64"
+    ;;
   *)
     echo "Unsupported IPK_ARCH=${IPK_ARCH}. Add a GOARCH mapping in scripts/build-ipk.sh." >&2
     exit 1
@@ -87,7 +112,7 @@ build_go_package() {
   (
     cd "${src}"
     go mod download
-    GOOS=linux GOARCH="${GOARCH}" CGO_ENABLED=0 \
+    GOOS=linux GOARCH="${GOARCH}" GOARM="${GOARM}" GOMIPS="${GOMIPS}" CGO_ENABLED=0 \
       go build -trimpath -ldflags="-s -w" -o "${data_dir}/usr/bin/${binary}" .
   )
   chmod 0755 "${data_dir}/usr/bin/${binary}"
