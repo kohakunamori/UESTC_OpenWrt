@@ -9,30 +9,57 @@ SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(date +%s)}"
 export GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
 
 GOARM=""
+GO386=""
+GOAMD64=""
 GOMIPS=""
+GOMIPS64=""
 
 case "${IPK_ARCH}" in
   x86_64)
     GOARCH="amd64"
+    GOAMD64="v1"
+    ;;
+  i386_pentium4)
+    GOARCH="386"
+    GO386="sse2"
+    ;;
+  i386_pentium|i386_geode)
+    GOARCH="386"
+    GO386="softfloat"
     ;;
   aarch64|aarch64_generic|aarch64_cortex-a53|aarch64_cortex-a72|aarch64_cortex-a76)
     GOARCH="arm64"
+    ;;
+  loongarch64|loongarch64_generic)
+    GOARCH="loong64"
+    ;;
+  arm_arm926ej-s|arm_xscale)
+    GOARCH="arm"
+    GOARM="5"
     ;;
   arm_arm1176jzf-s_vfp)
     GOARCH="arm"
     GOARM="6"
     ;;
-  arm_cortex-a5_vfpv4|arm_cortex-a7|arm_cortex-a7_neon-vfpv4|arm_cortex-a8_vfpv3|arm_cortex-a9|arm_cortex-a15_neon-vfpv4|arm_cortex-a53_neon-vfpv4)
+  arm_cortex-a5_vfpv4|arm_cortex-a7|arm_cortex-a7_neon-vfpv4|arm_cortex-a8_vfpv3|arm_cortex-a9|arm_cortex-a9_neon|arm_cortex-a15_neon-vfpv4|arm_cortex-a53_neon-vfpv4)
     GOARCH="arm"
     GOARM="7"
     ;;
-  mips_24kc)
+  mips_24kc|mips_4kec)
     GOARCH="mips"
     GOMIPS="softfloat"
     ;;
-  mipsel_24kc|mipsel_74kc)
+  mipsel_24kc|mipsel_74kc|mipsel_4kec)
     GOARCH="mipsle"
     GOMIPS="softfloat"
+    ;;
+  mips64_octeonplus)
+    GOARCH="mips64"
+    GOMIPS64="softfloat"
+    ;;
+  mips64el_mips64r2)
+    GOARCH="mips64le"
+    GOMIPS64="softfloat"
     ;;
   riscv64|riscv64_riscv64)
     GOARCH="riscv64"
@@ -117,7 +144,7 @@ build_go_package() {
   (
     cd "${src}"
     go mod download
-    GOOS=linux GOARCH="${GOARCH}" GOARM="${GOARM}" GOMIPS="${GOMIPS}" CGO_ENABLED=0 \
+    GOOS=linux GOARCH="${GOARCH}" GOARM="${GOARM}" GO386="${GO386}" GOAMD64="${GOAMD64}" GOMIPS="${GOMIPS}" GOMIPS64="${GOMIPS64}" CGO_ENABLED=0 \
       go build -trimpath -ldflags="-s -w" -o "${data_dir}/usr/bin/${binary}" .
   )
   chmod 0755 "${data_dir}/usr/bin/${binary}"

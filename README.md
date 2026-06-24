@@ -10,6 +10,8 @@
 opkg print-architecture
 ```
 
+Release 中的 `<arch>` 表示 IPK 的 OpenWrt 架构字段。为兼容更多 opkg/IPK 系 OpenWrt 固件，CI 会覆盖多个常见架构，Go 客户端以静态方式交叉编译；`all` 包不区分 CPU 架构，但仍要求固件提供 LuCI、rpcd、uci 和 procd 环境。使用 apk 包管理的 OpenWrt 分支需要单独打包。
+
 每次安装需要四个包：
 
 ```text
@@ -43,16 +45,6 @@ http://192.168.1.1/cgi-bin/luci/admin/services/uestc-authclient
 | `电信锐捷认证 (qsh-telecom-ruijie)` | 新版电信锐捷 / CAS portal | `锐捷 - 清水河宿舍 (110.184.24.61)` |
 | `CT authentication method (legacy qsh-telecom-autologin)` | 旧版电信 portal | `172.25.249.64` |
 | `Srun authentication method (go-nd-portal)` | Srun 认证 | 按校区和运营商选择 |
-
-新版电信锐捷认证建议配置：
-
-```text
-Authentication method: 电信锐捷认证 (qsh-telecom-ruijie)
-Authentication Host: 锐捷 - 清水河宿舍 (110.184.24.61)
-Interface: eth1
-Heartbeat hosts: 223.5.5.5, 119.29.29.29
-Check interval: 30
-```
 
 `Authentication Host` 只填写服务器 IP，不填写完整 URL，也不填写 `/portal/entry`、`/cas-sso/login` 等路径。客户端会自动跟随 portal 重定向并完成 CAS 登录流程。
 
@@ -97,19 +89,34 @@ workflow_dispatch
 每次 CI 会构建常见 OpenWrt 架构的 IPK：
 
 ```text
+i386_geode
+i386_pentium
+i386_pentium4
 x86_64
 aarch64_generic
 aarch64_cortex-a53
 aarch64_cortex-a72
 aarch64_cortex-a76
+arm_arm926ej-s
 arm_arm1176jzf-s_vfp
+arm_xscale
+arm_cortex-a5_vfpv4
+arm_cortex-a7
 arm_cortex-a7_neon-vfpv4
+arm_cortex-a8_vfpv3
 arm_cortex-a9
+arm_cortex-a9_neon
 arm_cortex-a15_neon-vfpv4
+arm_cortex-a53_neon-vfpv4
+mips_4kec
 mips_24kc
+mipsel_4kec
 mipsel_24kc
 mipsel_74kc
+mips64_octeonplus
+mips64el_mips64r2
 riscv64_riscv64
+loongarch64_generic
 ```
 
 每次推送到 `main` 且 CI 全部通过后，会自动刷新 `latest` Release：

@@ -106,7 +106,7 @@ unlock_iface() {
     if [ -e "$iface_lock" ]; then
         local locked_by
         locked_by=$(cat "$iface_lock")
-        if [ "$locked_by" == "$sid" ]; then
+        if [ "$locked_by" = "$sid" ]; then
             rm -f "$iface_lock"
         fi
     fi
