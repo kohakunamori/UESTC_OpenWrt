@@ -233,7 +233,7 @@ make_apk() {
   local work="${BUILD_DIR}/apk-${pkg}-${apk_arch}"
   local data_dir="${work}/data"
   local script_dir="${work}/scripts"
-  local version apk_version installed_size description maintainer output
+  local version apk_version description maintainer output
   local dep_args=()
   local script_args=()
 
@@ -251,7 +251,6 @@ make_apk() {
     printf '!etc/config/uestc_authclient\n' > "${data_dir}/etc/apk/protected_paths.d/luci-app-uestc-authclient.list"
   fi
 
-  installed_size="$(du -sk "${data_dir}" | awk '{ print $1 }')"
   output="${DIST_DIR}/${pkg}_${apk_version}_${apk_arch}.apk"
 
   while IFS= read -r -d '' arg; do
@@ -274,7 +273,6 @@ make_apk() {
     --info "maintainer:${maintainer}" \
     --info "url:https://github.com/kohakunamori/UESTC_OpenWrt" \
     --info "build-time:${SOURCE_DATE_EPOCH}" \
-    --info "installed-size:${installed_size}" \
     "${dep_args[@]}" \
     "${script_args[@]}" \
     --files "${data_dir}" \

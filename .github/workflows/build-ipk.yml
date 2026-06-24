@@ -103,16 +103,28 @@ jobs:
           find release-artifacts -type f -name '*.ipk' -exec cp -f {} release/ \;
           find release-artifacts -type f -name '*.apk' -exec cp -f {} release/ \;
           (cd release && sha256sum *.ipk *.apk > SHA256SUMS)
+          short_sha="${GITHUB_SHA::7}"
+          release_tag="build-${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}-${short_sha}"
+          {
+            echo "RELEASE_TAG=${release_tag}"
+            echo "SHORT_SHA=${short_sha}"
+          } >> "$GITHUB_ENV"
           cat > release/RELEASE_NOTES.md <<EOF
           ## 发布说明
 
-          这是由 CI 自动生成的滚动发布，来源提交：
+          这是由 CI 自动生成的独立发布，来源提交：
 
           \`\`\`text
           ${GITHUB_SHA}
           \`\`\`
 
-          \`latest\` 会在每次 \`main\` 分支 CI 成功后被替换。固定追溯构建来源时，请以提交哈希、Actions 运行记录和 \`SHA256SUMS\` 为准。
+          发布标签：
+
+          \`\`\`text
+          ${release_tag}
+          \`\`\`
+
+          每次 \`main\` 分支 CI 成功后都会创建新的 Release，不删除或覆盖历史 Release。固定追溯构建来源时，请以发布标签、提交哈希、Actions 运行记录和 \`SHA256SUMS\` 为准。
 
           ## 包说明
 
@@ -165,11 +177,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete latest --yes --cleanup-tag || true
-          git tag -f latest "$GITHUB_SHA"
-          git push -f origin latest
-          short_sha="${GITHUB_SHA::7}"
-          gh release create latest release/*.ipk release/*.apk release/SHA256SUMS \
-            --title "Latest build (${short_sha})" \
+          gh release create "$RELEASE_TAG" release/*.ipk release/*.apk release/SHA256SUMS \
+            --target "$GITHUB_SHA" \
+            --title "Build ${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT} (${SHORT_SHA})" \
             --notes-file release/RELEASE_NOTES.md \
             --latest

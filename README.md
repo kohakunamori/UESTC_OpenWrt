@@ -152,12 +152,12 @@ riscv64_riscv64
 loongarch64_generic
 ```
 
-每次推送到 `main` 且 CI 全部通过后，会自动刷新 `latest` Release：
+每次推送到 `main` 且 CI 全部通过后，会自动创建一个新的 Release。Release 标签格式为：
 
 ```text
-https://github.com/kohakunamori/UESTC_OpenWrt/releases/tag/latest
+build-<run-number>.<run-attempt>-<commit-short-sha>
 ```
 
-`latest` 是滚动发布，会被后续 `main` 分支提交替换。需要可复现地定位构建来源时，以 Release 标题中的 commit 短哈希、Actions run 和 `SHA256SUMS` 为准。
+历史 Release 不会被 CI 删除或覆盖。GitHub 页面上的 Latest 标记会指向最近一次成功构建，但旧版本仍可通过各自的 Release 标签访问。需要可复现地定位构建来源时，以 Release 标签、提交哈希、Actions run 和 `SHA256SUMS` 为准。
 
-Pull Request 和非 `main` 分支推送只生成 Actions artifacts，不会更新 `latest` Release。
+Pull Request 和非 `main` 分支推送只生成 Actions artifacts，不会发布 Release。
