@@ -82,6 +82,53 @@ jobs:
           mkdir -p release
           find release-artifacts -type f -name '*.ipk' -exec cp -f {} release/ \;
           (cd release && sha256sum *.ipk > SHA256SUMS)
+          cat > release/RELEASE_NOTES.md <<EOF
+          ## 发布说明
+
+          这是由 CI 自动生成的滚动发布，来源提交：
+
+          \`\`\`text
+          ${GITHUB_SHA}
+          \`\`\`
+
+          \`latest\` 会在每次 \`main\` 分支 CI 成功后被替换。固定追溯构建来源时，请以提交哈希、Actions 运行记录和 \`SHA256SUMS\` 为准。
+
+          ## 包说明
+
+          | 包名 | 作用 | 适用对象 |
+          | --- | --- | --- |
+          | \`qsh-telecom-autologin_<version>_<arch>.ipk\` | 电信认证命令行客户端，支持旧版电信 portal 和新版电信锐捷 / CAS portal。 | 使用 \`电信锐捷认证\` 或旧版 \`CT authentication method\` 的用户。必须选择与路由器一致的 \`<arch>\`。 |
+          | \`go-nd-portal_<version>_<arch>.ipk\` | Srun 认证命令行客户端。 | 使用 \`Srun authentication method\` 的用户。必须选择与路由器一致的 \`<arch>\`。 |
+          | \`luci-app-uestc-authclient_<version>_all.ipk\` | LuCI 管理界面、认证调度脚本、网络监控脚本和默认 UCI 配置。 | 所有需要在 LuCI 中管理认证会话的用户。\`all\` 表示不区分 CPU 架构。 |
+          | \`luci-i18n-uestc-authclient-zh-cn_<version>_all.ipk\` | LuCI 简体中文语言包。 | 需要中文界面的用户。\`all\` 表示不区分 CPU 架构。 |
+          | \`SHA256SUMS\` | Release 中所有 IPK 文件的 SHA256 校验值。 | 下载后校验文件完整性。 |
+
+          ## 推荐安装组合
+
+          常规安装建议下载并安装四个包：
+
+          \`\`\`sh
+          opkg install qsh-telecom-autologin_*_<arch>.ipk
+          opkg install go-nd-portal_*_<arch>.ipk
+          opkg install luci-app-uestc-authclient_*_all.ipk
+          opkg install luci-i18n-uestc-authclient-zh-cn_*_all.ipk
+          \`\`\`
+
+          其中 \`<arch>\` 通过路由器上的以下命令确认：
+
+          \`\`\`sh
+          opkg print-architecture
+          \`\`\`
+
+          新版电信锐捷认证一般选择：
+
+          \`\`\`text
+          Authentication method: 电信锐捷认证
+          Authentication Host: 锐捷 - 清水河宿舍 (110.184.24.61)
+          Interface: eth1
+          \`\`\`
+
+          EOF
           ls -lh release
 
       - name: Publish latest release
@@ -92,7 +139,7 @@ jobs:
           git tag -f latest "$GITHUB_SHA"
           git push -f origin latest
           short_sha="${GITHUB_SHA::7}"
-          gh release create latest release/* \
+          gh release create latest release/*.ipk release/SHA256SUMS \
             --title "Latest build (${short_sha})" \
-            --notes "Automated IPK build for commit ${GITHUB_SHA}. This rolling release is replaced on every push to main." \
+            --notes-file release/RELEASE_NOTES.md \
             --latest

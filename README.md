@@ -1,47 +1,100 @@
-# UESTC OpenWrt Auth Client
+# UESTC OpenWrt 认证客户端
 
-OpenWrt packages for UESTC campus network authentication.
+用于在 OpenWrt 上管理 UESTC 校园网认证，包含 LuCI 管理界面、认证监控脚本，以及电信锐捷、旧版电信、Srun 三类认证客户端。
 
-This repository contains:
+## 安装
 
-- `qsh-telecom-autologin`: Go client for legacy China Telecom authentication and the newer Telecom Ruijie/CAS portal.
-- `go-nd-portal`: Go client for UESTC Srun authentication.
-- `luci-app-uestc-authclient`: LuCI UI and monitor scripts for managing authentication sessions.
-- `luci-i18n-uestc-authclient-zh-cn`: Simplified Chinese translation package.
+从 [Releases](https://github.com/kohakunamori/UESTC_OpenWrt/releases) 下载与你路由器架构匹配的 `.ipk`。路由器架构可通过以下命令查看：
 
-## Authentication Types
+```sh
+opkg print-architecture
+```
 
-The LuCI page separates the Telecom flows:
+每次安装需要四个包：
 
-- `CT authentication method (legacy qsh-telecom-autologin)`: legacy CT portal, default server `172.25.249.64`.
-- `电信锐捷认证`: new Telecom Ruijie/CAS portal, default server `110.184.24.61`.
-- `Srun authentication method (go-nd-portal)`: UESTC Srun portal modes.
+```text
+qsh-telecom-autologin_<version>_<arch>.ipk
+go-nd-portal_<version>_<arch>.ipk
+luci-app-uestc-authclient_<version>_all.ipk
+luci-i18n-uestc-authclient-zh-cn_<version>_all.ipk
+```
 
-For the new Telecom Ruijie portal, configure the session as:
+先安装两个认证客户端，再安装 LuCI 应用和中文语言包：
+
+```sh
+opkg install qsh-telecom-autologin_*.ipk
+opkg install go-nd-portal_*.ipk
+opkg install luci-app-uestc-authclient_*.ipk
+opkg install luci-i18n-uestc-authclient-zh-cn_*.ipk
+```
+
+安装完成后进入：
+
+```text
+http://192.168.1.1/cgi-bin/luci/admin/services/uestc-authclient
+```
+
+## 配置
+
+在 LuCI 页面中新建或编辑认证会话，按实际线路选择认证方式。
+
+| 认证方式 | 适用入口 | 默认认证服务器 |
+| --- | --- | --- |
+| `电信锐捷认证` | 新版电信锐捷 / CAS portal | `110.184.24.61` |
+| `CT authentication method (legacy qsh-telecom-autologin)` | 旧版电信 portal | `172.25.249.64` |
+| `Srun authentication method (go-nd-portal)` | Srun 认证 | 按校区和运营商选择 |
+
+新版电信锐捷认证建议配置：
 
 ```text
 Authentication method: 电信锐捷认证
-Authentication Host: 110.184.24.61
+Authentication Host: 锐捷 - 清水河宿舍 (110.184.24.61)
 Interface: eth1
 Heartbeat hosts: 223.5.5.5, 119.29.29.29
 Check interval: 30
 ```
 
-The Authentication Host field should contain only the IP address, not a full portal URL.
+`Authentication Host` 只填写服务器 IP，不填写完整 URL，也不填写 `/portal/entry`、`/cas-sso/login` 等路径。客户端会自动跟随 portal 重定向并完成 CAS 登录流程。
 
-## Build IPKs
+需要开机自动认证时，同时启用：
 
-Build locally on Linux:
-
-```bash
-bash scripts/build-ipk.sh
+```text
+Global / Bring up on boot
+Session / Enabled
 ```
 
-The generated packages are written to `dist/`.
+如果当前网络已经可用，脚本会直接返回成功并跳过重复认证：
 
-The GitHub Actions workflow in `.github/workflows/build-ipk.yml` builds IPKs on each push, pull request, and manual workflow dispatch. Download the per-architecture artifacts named `uestc-authclient-<arch>-ipk` from the workflow run.
+```text
+Network already reachable on eth1, skip authentication
+```
 
-The workflow also builds common OpenWrt package architectures:
+这是预期行为，用于避免已认证状态下反复提交登录请求。
+
+## 升级
+
+升级时按安装顺序重新安装同架构的新包即可：
+
+```sh
+opkg install --force-reinstall qsh-telecom-autologin_*.ipk
+opkg install --force-reinstall go-nd-portal_*.ipk
+opkg install --force-reinstall luci-app-uestc-authclient_*.ipk
+opkg install --force-reinstall luci-i18n-uestc-authclient-zh-cn_*.ipk
+```
+
+`/etc/config/uestc_authclient` 被声明为配置文件，正常升级不会覆盖已有账号、密码和会话配置。新版包会在缺失时自动补充 `ct_ruijie` 会话模板。
+
+## Releases 发布规律
+
+CI 在以下场景自动执行：
+
+```text
+push
+pull_request
+workflow_dispatch
+```
+
+每次 CI 会构建常见 OpenWrt 架构的 IPK：
 
 ```text
 x86_64
@@ -59,34 +112,12 @@ mipsel_74kc
 riscv64_riscv64
 ```
 
-Every pushed commit runs CI. Pushes to `main` also refresh the rolling `latest` GitHub Release with the newest IPKs and checksums.
-
-## Install Order
-
-Install the client packages before the LuCI app:
-
-```sh
-opkg install qsh-telecom-autologin_*.ipk
-opkg install go-nd-portal_*.ipk
-opkg install luci-app-uestc-authclient_*.ipk
-opkg install luci-i18n-uestc-authclient-zh-cn_*.ipk
-```
-
-Then open:
+每次推送到 `main` 且 CI 全部通过后，会自动刷新 `latest` Release：
 
 ```text
-http://192.168.1.1/cgi-bin/luci/admin/services/uestc-authclient
+https://github.com/kohakunamori/UESTC_OpenWrt/releases/tag/latest
 ```
 
-## Notes
+`latest` 是滚动发布，会被后续 `main` 分支提交替换。需要可复现地定位构建来源时，以 Release 标题中的 commit 短哈希、Actions run 和 `SHA256SUMS` 为准。
 
-The repository intentionally does not include captured portal traffic, router backups, built IPKs, or local unpacked working directories.
-
-## Acknowledgements
-
-This project is developed on top of work from:
-
-- [Aleksanaa/qsh-telecom-autologin](https://github.com/Aleksanaa/qsh-telecom-autologin)
-- [chasey-dev/uestc_authclient](https://github.com/chasey-dev/uestc_authclient)
-
-The bundled Srun client source is from [fumiama/go-nd-portal](https://github.com/fumiama/go-nd-portal).
+Pull Request 和非 `main` 分支推送只生成 Actions artifacts，不会更新 `latest` Release。
