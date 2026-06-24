@@ -1,5 +1,5 @@
 Package: luci-i18n-uestc-authclient-zh-cn
-Version: git-26.175.00000-ruijie
+Version: git-26.175.00001-ruijie
 Depends: libc, luci-app-uestc-authclient
 Source: feeds/uestc_authclient/luci-app-uestc-authclient
 SourceName: luci-i18n-uestc-authclient-zh-cn

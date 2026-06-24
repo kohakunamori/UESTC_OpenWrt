@@ -1,4 +1,8 @@
 	[ -n "${IPKG_INSTROOT}" ] || {
-		(. /etc/uci-defaults/luci-i18n-uestc-authclient-zh-cn) && rm -f /etc/uci-defaults/luci-i18n-uestc-authclient-zh-cn
+		uci set luci.languages.zh_cn='简体中文 (Chinese Simplified)' 2>/dev/null || true
+		uci commit luci 2>/dev/null || true
+		rm -f /tmp/luci-indexcache.*
+		rm -rf /tmp/luci-modulecache/
+		killall -HUP rpcd 2>/dev/null
 		exit 0
 	}
