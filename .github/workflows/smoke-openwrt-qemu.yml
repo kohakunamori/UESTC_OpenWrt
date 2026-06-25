@@ -1,0 +1,46 @@
+name: OpenWrt QEMU Smoke Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    name: OpenWrt ${{ matrix.openwrt_version }} x86/64 smoke
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        openwrt_version:
+          - "21.02.7"
+          - "24.10.1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: packages/qsh-telecom-autologin/src/go.mod
+          cache-dependency-path: |
+            packages/qsh-telecom-autologin/src/go.sum
+            packages/go-nd-portal/src/go.sum
+
+      - name: Install QEMU smoke dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl gzip netcat-openbsd openssh-client qemu-system-x86 sshpass
+
+      - name: Build x86_64 IPK packages
+        env:
+          IPK_ARCH: x86_64
+          SOURCE_DATE_EPOCH: 1764608399
+        run: bash scripts/build-ipk.sh
+
+      - name: Run OpenWrt QEMU smoke test
+        env:
+          OPENWRT_VERSION: ${{ matrix.openwrt_version }}
+          OPENWRT_TARGET: x86
+          OPENWRT_SUBTARGET: "64"
+          IPK_ARCH: x86_64
+        run: bash scripts/smoke-openwrt-qemu.sh
