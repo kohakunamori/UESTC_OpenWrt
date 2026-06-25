@@ -78,7 +78,24 @@ if [ ! -s "${IMAGE_GZ}" ]; then
 fi
 
 echo "Extracting image"
+rm -f "${IMAGE}"
+set +e
 gzip -dc "${IMAGE_GZ}" > "${IMAGE}"
+gzip_rc=$?
+set -e
+if [ "${gzip_rc}" -ne 0 ]; then
+  if [ "${gzip_rc}" -eq 2 ] && [ -s "${IMAGE}" ]; then
+    echo "gzip reported a warning while extracting; continuing because the image was produced."
+  else
+    echo "Failed to extract ${IMAGE_GZ}." >&2
+    rm -f "${IMAGE}"
+    exit "${gzip_rc}"
+  fi
+fi
+if [ ! -s "${IMAGE}" ]; then
+  echo "Extracted image is empty: ${IMAGE}" >&2
+  exit 1
+fi
 
 qsh_ipk="$(ls "${DIST_DIR}"/qsh-telecom-autologin_*_"${IPK_ARCH}".ipk | head -n 1)"
 go_ipk="$(ls "${DIST_DIR}"/go-nd-portal_*_"${IPK_ARCH}".ipk | head -n 1)"
