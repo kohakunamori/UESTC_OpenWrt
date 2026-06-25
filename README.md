@@ -160,3 +160,10 @@ build-<run-number>.<run-attempt>-<commit-short-sha>
 历史 Release 不会被 CI 删除或覆盖。GitHub 页面上的 Latest 标记会指向最近一次成功构建，但旧版本仍可通过各自的 Release 标签访问。需要可复现地定位构建来源时，以 Release 标签、提交哈希、Actions run 和 `SHA256SUMS` 为准。
 
 Pull Request 和非 `main` 分支推送只生成 Actions artifacts，不会发布 Release。
+
+## 鸣谢
+
+感谢以下项目为本项目提供实现参考与启发：
+
+- [Aleksanaa/qsh-telecom-autologin](https://github.com/Aleksanaa/qsh-telecom-autologin)
+- [chasey-dev/uestc_authclient](https://github.com/chasey-dev/uestc_authclient)
