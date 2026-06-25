@@ -38,6 +38,7 @@ jobs:
         run: bash scripts/build-ipk.sh
 
       - name: Run OpenWrt QEMU smoke test
+        timeout-minutes: 15
         env:
           OPENWRT_VERSION: ${{ matrix.openwrt_version }}
           OPENWRT_TARGET: x86

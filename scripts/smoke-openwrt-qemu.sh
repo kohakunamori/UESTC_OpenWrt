@@ -8,9 +8,11 @@ OPENWRT_TARGET="${OPENWRT_TARGET:-x86}"
 OPENWRT_SUBTARGET="${OPENWRT_SUBTARGET:-64}"
 IPK_ARCH="${IPK_ARCH:-x86_64}"
 WORK_DIR="${WORK_DIR:-${ROOT_DIR}/build/openwrt-smoke-${OPENWRT_VERSION}-${OPENWRT_TARGET}-${OPENWRT_SUBTARGET}}"
-SSH_PORT="${SSH_PORT:-}"
+SSH_HOST="${SSH_HOST:-192.168.1.1}"
+SSH_PORT="${SSH_PORT:-22}"
+TAP_IF="${TAP_IF:-owrt${OPENWRT_VERSION//./}$((RANDOM % 9000 + 1000))}"
 
-for tool in curl gzip nc qemu-system-x86_64 ssh sshpass; do
+for tool in curl gzip ip nc qemu-system-x86_64 ssh sshpass sudo timeout; do
   command -v "${tool}" >/dev/null 2>&1 || {
     echo "Required tool not found: ${tool}" >&2
     exit 1
@@ -29,6 +31,7 @@ cleanup() {
     kill "${QEMU_PID}" 2>/dev/null || true
     wait "${QEMU_PID}" 2>/dev/null || true
   fi
+  sudo ip link delete "${TAP_IF}" 2>/dev/null || true
 }
 
 dump_console_on_error() {
@@ -42,17 +45,6 @@ dump_console_on_error() {
   exit "${rc}"
 }
 trap dump_console_on_error EXIT
-
-if [ -z "${SSH_PORT}" ]; then
-  SSH_PORT="$(python3 - <<'PY'
-import socket
-s = socket.socket()
-s.bind(("127.0.0.1", 0))
-print(s.getsockname()[1])
-s.close()
-PY
-)"
-fi
 
 target_dir_url="https://downloads.openwrt.org/releases/${OPENWRT_VERSION}/targets/${OPENWRT_TARGET}/${OPENWRT_SUBTARGET}"
 target_name="${OPENWRT_TARGET}-${OPENWRT_SUBTARGET}"
@@ -105,13 +97,20 @@ i18n_ipk="$(ls "${DIST_DIR}"/luci-i18n-uestc-authclient-zh-cn_*_all.ipk | head -
 echo "Using packages:"
 printf '  %s\n' "${qsh_ipk}" "${go_ipk}" "${luci_ipk}" "${i18n_ipk}"
 
-echo "Starting OpenWrt ${OPENWRT_VERSION} VM on SSH port ${SSH_PORT}"
+echo "Creating TAP interface ${TAP_IF} for OpenWrt LAN access"
+sudo ip tuntap add dev "${TAP_IF}" mode tap user "$(id -un)"
+sudo ip addr add 192.168.1.2/24 dev "${TAP_IF}"
+sudo ip link set "${TAP_IF}" up
+
+echo "Starting OpenWrt ${OPENWRT_VERSION} VM"
 qemu-system-x86_64 \
   -m 512M \
   -smp 2 \
   -drive "file=${IMAGE},format=raw,if=ide" \
-  -netdev "user,id=net0,hostfwd=tcp:127.0.0.1:${SSH_PORT}-192.168.1.1:22" \
-  -device e1000,netdev=net0 \
+  -netdev "tap,id=lan0,ifname=${TAP_IF},script=no,downscript=no" \
+  -device e1000,netdev=lan0,mac=52:54:00:12:34:56 \
+  -netdev "user,id=wan0" \
+  -device e1000,netdev=wan0,mac=52:54:00:12:34:57 \
   -display none \
   -serial "file:${CONSOLE_LOG}" \
   -no-reboot &
@@ -128,23 +127,23 @@ ssh_common=(
 )
 
 try_ssh_none() {
-  ssh "${ssh_common[@]}" \
+  timeout 8s ssh "${ssh_common[@]}" \
     -o BatchMode=yes \
     -o PreferredAuthentications=none \
     -o PubkeyAuthentication=no \
-    root@127.0.0.1 "$@"
+    "root@${SSH_HOST}" "$@"
 }
 
 try_ssh_empty_password() {
-  sshpass -p '' ssh "${ssh_common[@]}" \
+  timeout 8s sshpass -p '' ssh "${ssh_common[@]}" \
     -o PreferredAuthentications=password \
     -o PubkeyAuthentication=no \
-    root@127.0.0.1 "$@"
+    "root@${SSH_HOST}" "$@"
 }
 
 echo "Waiting for SSH"
 for _ in $(seq 1 90); do
-  if nc -z 127.0.0.1 "${SSH_PORT}" 2>/dev/null; then
+  if nc -z "${SSH_HOST}" "${SSH_PORT}" 2>/dev/null; then
     if try_ssh_none true 2>/dev/null; then
       AUTH_PREFIX=(ssh "${ssh_common[@]}" -o BatchMode=yes -o PreferredAuthentications=none -o PubkeyAuthentication=no)
       break
@@ -163,19 +162,19 @@ if [ "${#AUTH_PREFIX[@]}" -eq 0 ]; then
 fi
 
 guest_ssh() {
-  "${AUTH_PREFIX[@]}" root@127.0.0.1 "$@"
+  "${AUTH_PREFIX[@]}" "root@${SSH_HOST}" "$@"
 }
 
 guest_upload() {
   local local_file="$1"
   local remote_file="$2"
-  "${AUTH_PREFIX[@]}" root@127.0.0.1 "cat > '${remote_file}'" < "${local_file}"
+  "${AUTH_PREFIX[@]}" "root@${SSH_HOST}" "cat > '${remote_file}'" < "${local_file}"
 }
 
 echo "Configuring guest network for package feed access"
 guest_ssh 'sh -s' <<'EOF'
 set -eu
-iface="$(ip -o link show | awk -F': ' '/: eth[0-9]/{ print $2; exit }')"
+iface="$(ip -o link show | awk -F': ' '/: eth[0-9]/{ print $2 }' | tail -n 1)"
 [ -n "${iface}" ]
 ip link set "${iface}" up
 ip addr add 10.0.2.15/24 dev "${iface}" 2>/dev/null || true
