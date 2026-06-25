@@ -2,7 +2,7 @@
 #
 # Auto‑login helper script
 # ------------------------------------------------------------
-# Handles Telecom/Ruijie (`qsh-telecom-autologin`) and SRUN (`go-nd-portal`)
+# Handles CT/Telecom/Ruijie (`qsh-telecom-autologin`) and SRUN (`go-nd-portal`)
 # clients on a given network interface.
 #
 # Exit status:
@@ -18,7 +18,7 @@
 usage() {
     printf "Usage: %s -t <client_type> -i <interface> -s <server> " "$0"
     printf "-u <username> -p <password> [-m <auth_mode>] [-w <wait_sec>]\n"
-    printf "  -t: Client type (ct, qsh-telecom-ruijie, ct_ruijie, or srun)\n"
+    printf "  -t: Client type (ct, legacy aliases qsh-telecom-ruijie/ct_ruijie, or srun)\n"
     printf "  -i: Network interface (default: wan)\n"
     printf "  -s: Authentication server / host\n"
     printf "  -u: Username\n"

@@ -365,11 +365,9 @@ return view.extend({
 
 			o = modalSection.taboption('auth', form.ListValue, 'auth_type', _('Authentication method'));
 			o.description = _('Select the authentication method.<br />') +
-				_('<strong>CT authentication method is the legacy China Telecom portal.</strong><br />') +
-				_('电信锐捷认证 is the new 110.184.24.61 CAS/Ruijie portal.');
+				_('CT authentication uses qsh-telecom-autologin. The client follows portal redirects and uses CAS/Ruijie login when the portal redirects there.');
 			o.value('srun', _('Srun authentication method (go-nd-portal)'));
-			o.value('ct', _('CT authentication method (legacy qsh-telecom-autologin)'));
-			o.value('qsh-telecom-ruijie', _('电信锐捷认证 (qsh-telecom-ruijie)'));
+			o.value('ct', _('CT authentication method (qsh-telecom-autologin)'));
 			o.default = 'srun';
 			o.rmempty = false;
 
@@ -409,11 +407,11 @@ return view.extend({
 			o = modalSection.taboption('auth', form.ListValue, 'auth_host', _('Authentication Host'));
 			o.description = _('Authentication server address, modify according to your area.');
 			o.datatype = 'ip4addr';
-			o.value('172.25.249.64', _('China Telecom') + ' - ' + _('Qingshuihe Campus Dormitory') + ' (172.25.249.64)');
-			o.value('110.184.24.61', _('锐捷') + ' - ' + _('清水河宿舍') + ' (110.184.24.61)');
+			o.value('172.25.249.64', _('Telecom/Ruijie portal entry') + ' - ' + _('Qingshuihe Campus Dormitory') + ' (172.25.249.64)');
 			o.value('10.253.0.237', 'Srun - ' + _('Qingshuihe Campus') + ' (10.253.0.237)');
 			o.value('10.253.0.235', 'Srun - ' + _('Qingshuihe Campus Dormitory') + ' (10.253.0.235)');
 			o.value('192.168.9.8', 'Srun - ' + _('Shahe Campus') + ' (192.168.9.8)');
+			o.default = '172.25.249.64';
 			o.rmempty = false;
 
 			o = modalSection.taboption('network', form.Value, 'listen_interface', _('Interface'));

@@ -12,6 +12,13 @@ http://example.com/
 The actual username/password form is served by the CAS SSO page, not by the legacy
 `/eportal/InterFace.do?method=login` endpoint.
 
+In the OpenWrt wrapper, `172.25.249.64` is still used as the default initial entry
+host for `qsh-telecom-autologin`. The client follows redirects from that entry and
+switches to CAS/Ruijie login only after it reaches `/portal/portal-main`; directly
+using the CAS host can miss the redirect parameters required to build the login URL.
+For clarity, the LuCI UI exposes this path as `ct` only; older `ct_ruijie` and
+`qsh-telecom-ruijie` values are treated as compatibility aliases by the scripts.
+
 Important hidden fields from the CAS page:
 
 - `login-croypto`: base64 AES key.
