@@ -37,7 +37,7 @@ config session 'ct'
     option auth_type 'ct'
     option auth_username ''
     option auth_password ''
-    option auth_host '172.25.249.64'
+    option auth_host 'http://connectivitycheck.gstatic.com/generate_204'
 
     option listen_interface 'wan'
     option listen_check_interval '30'

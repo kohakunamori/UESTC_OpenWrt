@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"html"
 	"io"
 	"math/big"
@@ -28,6 +29,17 @@ import (
 
 // So what's this and why is it there?
 var confusingString = ">111111111"
+
+const (
+	defaultInitialURL  = "http://connectivitycheck.gstatic.com/generate_204"
+	maxPortalRedirects = 12
+)
+
+var captiveProbeURLs = []string{
+	defaultInitialURL,
+	"http://123.123.123.123/",
+	"http://neverssl.com/",
+}
 
 var baseHeader = map[string]string{
 	"Accept":          "*/*",
@@ -62,6 +74,15 @@ func (c *loginClient) Get(urlString string) *http.Response {
 	}
 
 	return c.Do(req)
+}
+
+func (c *loginClient) tryGet(urlString string) (*http.Response, error) {
+	req, err := http.NewRequest("GET", urlString, nil)
+	if err != nil {
+		return nil, fmt.Errorf("cannot make request: %w", err)
+	}
+
+	return c.tryDo(req)
 }
 
 func (c *loginClient) Post(urlString string, body io.Reader) *http.Response {
@@ -114,20 +135,12 @@ func dialerWithInterface(iface string) *net.Dialer {
 		Timeout:   30 * time.Second,
 		KeepAlive: 30 * time.Second,
 		Control: func(network, address string, c syscall.RawConn) error {
-			var controlErr error
-			// set SO_BINDTODEVICE for Control to bind to specified interface after socket is initialized
-			err := c.Control(func(fd uintptr) {
-				controlErr = syscall.SetsockoptString(int(fd), syscall.SOL_SOCKET, syscall.SO_BINDTODEVICE, iface)
-			})
-			if err != nil {
-				log.Panic("Unexpected exception: ", err)
-			}
-			return controlErr
+			return bindToDevice(c, iface)
 		},
 	}
 }
 
-func (c *loginClient) Do(req *http.Request) *http.Response {
+func (c *loginClient) tryDo(req *http.Request) (*http.Response, error) {
 	var dialContext func(ctx context.Context, network, addr string) (net.Conn, error)
 
 	if c.localIP != "" {
@@ -163,6 +176,15 @@ func (c *loginClient) Do(req *http.Request) *http.Response {
 	c.c.Timeout = 20 * time.Second
 
 	resp, err := c.c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func (c *loginClient) Do(req *http.Request) *http.Response {
+	resp, err := c.tryDo(req)
 	if err != nil {
 		log.Panic("Cannot connect: ", err)
 	}
@@ -202,31 +224,143 @@ func (c *loginClient) myPost(urlString string, reqData map[string]string, respDa
 	defer resp.Body.Close()
 }
 
-func (c *loginClient) loginInit() {
-	urlString := "http://" + c.initHost
-	for {
-		resp := c.Get(urlString)
-		defer resp.Body.Close()
-		if resp.StatusCode == http.StatusFound {
-			nextURL := resp.Header.Get("Location")
-			if nextURL == "" {
-				log.Panic("Redirect response does not include Location")
+func normalizeInitialURL(host string) string {
+	host = strings.TrimSpace(host)
+	if strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://") {
+		return host
+	}
+	return "http://" + strings.TrimLeft(host, "/")
+}
+
+func isRedirectStatus(status int) bool {
+	switch status {
+	case http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther,
+		http.StatusTemporaryRedirect, http.StatusPermanentRedirect:
+		return true
+	default:
+		return false
+	}
+}
+
+func resolveRedirectURL(currentURL, location string) (string, error) {
+	base, err := url.Parse(currentURL)
+	if err != nil {
+		return "", err
+	}
+	next, err := url.Parse(location)
+	if err != nil {
+		return "", err
+	}
+	return base.ResolveReference(next).String(), nil
+}
+
+func isUsefulPortalInitURL(urlString string) bool {
+	u, err := url.Parse(urlString)
+	if err != nil {
+		return false
+	}
+	return strings.Contains(u.Path, "/portal/portal-main") ||
+		strings.Contains(u.Path, "/eportal/") ||
+		u.Query().Get("userip") != "" ||
+		u.Query().Get("nasip") != ""
+}
+
+func appendUniqueURL(urls []string, urlString string) []string {
+	normalized := strings.TrimRight(urlString, "/")
+	for _, existing := range urls {
+		if strings.EqualFold(strings.TrimRight(existing, "/"), normalized) {
+			return urls
+		}
+	}
+	return append(urls, urlString)
+}
+
+func (c *loginClient) resetPortalInitState() {
+	c.loginHost = ""
+	c.queryString = ""
+	c.portalMain = nil
+	c.nodeMac = ""
+}
+
+func (c *loginClient) followPortalRedirects(startURL string) (string, int, error) {
+	urlString := startURL
+	seen := map[string]bool{}
+
+	for redirectCount := 0; redirectCount < maxPortalRedirects; redirectCount++ {
+		if seen[urlString] {
+			return "", 0, fmt.Errorf("redirect loop at %s", urlString)
+		}
+		seen[urlString] = true
+
+		resp, err := c.tryGet(urlString)
+		if err != nil {
+			return "", 0, err
+		}
+
+		_, _ = io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+
+		if isRedirectStatus(resp.StatusCode) {
+			location := resp.Header.Get("Location")
+			if location == "" {
+				return "", resp.StatusCode, fmt.Errorf("redirect response does not include Location")
+			}
+			nextURL, err := resolveRedirectURL(urlString, location)
+			if err != nil {
+				return "", resp.StatusCode, fmt.Errorf("redirect response includes illegal Location %q: %w", location, err)
 			}
 			c.rememberRedirectParams(nextURL)
 			urlString = nextURL
-		} else {
-			u, err := url.Parse(urlString)
-			if err != nil {
-				log.Panic("Returned illegal url '", urlString, "': ", err)
+			continue
+		}
+
+		u, err := url.Parse(urlString)
+		if err != nil {
+			return "", resp.StatusCode, fmt.Errorf("returned illegal url %q: %w", urlString, err)
+		}
+		c.loginHost = u.Host
+		c.queryString = u.RawQuery
+		if strings.Contains(u.Path, "/portal/portal-main") {
+			c.portalMain = u
+		}
+		return urlString, resp.StatusCode, nil
+	}
+
+	return "", 0, fmt.Errorf("too many redirects")
+}
+
+func (c *loginClient) loginInit() {
+	candidates := []string{normalizeInitialURL(c.initHost)}
+	for _, probeURL := range captiveProbeURLs {
+		candidates = appendUniqueURL(candidates, probeURL)
+	}
+
+	var attempts []string
+	for i, candidate := range candidates {
+		c.resetPortalInitState()
+		finalURL, status, err := c.followPortalRedirects(candidate)
+		if err != nil {
+			attempts = append(attempts, fmt.Sprintf("%s: %v", candidate, err))
+			if i == 0 {
+				log.Warnf("Initial portal entry %s failed: %v; trying captive HTTP probes", candidate, err)
 			}
-			c.loginHost = u.Host
-			c.queryString = u.RawQuery
-			if strings.Contains(u.Path, "/portal/portal-main") {
-				c.portalMain = u
+			continue
+		}
+
+		if c.portalMain != nil || isUsefulPortalInitURL(finalURL) {
+			if i > 0 {
+				log.Warnf("Using captive HTTP probe %s after initial portal entry was unavailable", candidate)
 			}
-			break
+			return
+		}
+
+		attempts = append(attempts, fmt.Sprintf("%s: ended at %s with HTTP %d and no portal redirect", candidate, finalURL, status))
+		if i == 0 {
+			log.Warnf("Initial portal entry %s did not return a portal redirect; trying captive HTTP probes", candidate)
 		}
 	}
+
+	log.Panicf("Cannot initialize login portal. Attempts: %s", strings.Join(attempts, "; "))
 }
 
 func (c *loginClient) rememberRedirectParams(urlString string) {
@@ -514,7 +648,7 @@ func (c *loginClient) saveCache() {
 func (c *loginClient) run() {
 	flag.StringVar(&c.username, "name", "", "Account name, usually phone number")
 	flag.StringVar(&c.password, "passwd", "", "Password to the account")
-	flag.StringVar(&c.initHost, "host", "172.25.249.64", "Domain of the login page, usually ip address")
+	flag.StringVar(&c.initHost, "host", defaultInitialURL, "Initial login URL or host; HTTP captive portal probe is recommended")
 	flag.StringVar(&c.cachePath, "cache", "", "Specify where to read and store cache, blank to disable")
 	flag.StringVar(&c.userIndex, "index", "", "User Index of user, only for logging out")
 	flag.StringVar(&c.localIP, "localip", "", "Local IP address to bind to")

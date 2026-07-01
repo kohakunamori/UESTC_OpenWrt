@@ -405,13 +405,13 @@ return view.extend({
 			};
 
 			o = modalSection.taboption('auth', form.ListValue, 'auth_host', _('Authentication Host'));
-			o.description = _('Authentication server address, modify according to your area.');
-			o.datatype = 'ip4addr';
-			o.value('172.25.249.64', _('Telecom/Ruijie portal entry') + ' - ' + _('Qingshuihe Campus Dormitory') + ' (172.25.249.64)');
+			o.description = _('Authentication server address, modify according to your area. CT/Ruijie authentication should use the automatic HTTP captive portal probe unless your area requires a specific entry.');
+			o.value('http://connectivitycheck.gstatic.com/generate_204', _('Automatic HTTP captive portal probe') + ' (Recommended)');
+			o.value('172.25.249.64', _('Legacy Telecom/Ruijie portal entry') + ' - ' + _('Qingshuihe Campus Dormitory') + ' (172.25.249.64)');
 			o.value('10.253.0.237', 'Srun - ' + _('Qingshuihe Campus') + ' (10.253.0.237)');
 			o.value('10.253.0.235', 'Srun - ' + _('Qingshuihe Campus Dormitory') + ' (10.253.0.235)');
 			o.value('192.168.9.8', 'Srun - ' + _('Shahe Campus') + ' (192.168.9.8)');
-			o.default = '172.25.249.64';
+			o.default = 'http://connectivitycheck.gstatic.com/generate_204';
 			o.rmempty = false;
 
 			o = modalSection.taboption('network', form.Value, 'listen_interface', _('Interface'));

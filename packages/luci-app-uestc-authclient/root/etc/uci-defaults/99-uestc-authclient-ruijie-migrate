@@ -1,7 +1,7 @@
 #!/bin/sh
 
 changed=0
-telecom_entry_host="172.25.249.64"
+ct_default_probe="http://connectivitycheck.gstatic.com/generate_204"
 
 normalize_telecom_section() {
     section="$1"
@@ -20,8 +20,8 @@ normalize_telecom_section() {
 
     auth_host="$(uci -q get "uestc_authclient.$section.auth_host" || true)"
     case "$auth_host" in
-        ""|110.184.24.61)
-            uci set "uestc_authclient.$section.auth_host=$telecom_entry_host"
+        ""|110.184.24.61|172.25.249.64)
+            uci set "uestc_authclient.$section.auth_host=$ct_default_probe"
             changed=1
             ;;
     esac

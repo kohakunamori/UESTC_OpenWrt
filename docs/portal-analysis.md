@@ -12,10 +12,13 @@ http://example.com/
 The actual username/password form is served by the CAS SSO page, not by the legacy
 `/eportal/InterFace.do?method=login` endpoint.
 
-In the OpenWrt wrapper, `172.25.249.64` is still used as the default initial entry
-host for `qsh-telecom-autologin`. The client follows redirects from that entry and
-switches to CAS/Ruijie login only after it reaches `/portal/portal-main`; directly
-using the CAS host can miss the redirect parameters required to build the login URL.
+In the OpenWrt wrapper, CT/Ruijie authentication defaults to an HTTP captive
+portal probe, currently `http://connectivitycheck.gstatic.com/generate_204`.
+The access gateway intercepts unauthenticated HTTP traffic and returns the
+current portal redirect chain. The client follows that chain and switches to
+CAS/Ruijie login only after it reaches `/portal/portal-main`; directly using the
+CAS host can miss the redirect parameters required to build the login URL. The
+old dormitory entry host `172.25.249.64` is retained only as a legacy option.
 For clarity, the LuCI UI exposes this path as `ct` only; older `ct_ruijie` and
 `qsh-telecom-ruijie` values are treated as compatibility aliases by the scripts.
 

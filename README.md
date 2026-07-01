@@ -66,10 +66,10 @@ http://192.168.1.1/cgi-bin/luci/admin/services/uestc-authclient
 
 | 认证方式 | 适用入口 | 默认认证服务器 |
 | --- | --- | --- |
-| `CT authentication method (qsh-telecom-autologin)` | 电信 / 锐捷入口，自动跟随 portal 重定向 | `Telecom/Ruijie portal entry - 清水河宿舍 (172.25.249.64)` |
+| `CT authentication method (qsh-telecom-autologin)` | 电信 / 锐捷入口，自动跟随 portal 重定向 | `Automatic HTTP captive portal probe (http://connectivitycheck.gstatic.com/generate_204)` |
 | `Srun authentication method (go-nd-portal)` | Srun 认证 | 按校区和运营商选择 |
 
-`Authentication Host` 只填写入口服务器 IP，不填写完整 URL，也不填写 `/portal/entry`、`/cas-sso/login` 等路径。`qsh-telecom-autologin` 会从 `172.25.249.64` 入口地址开始跟随 portal 重定向；当重定向链进入新版 CAS/Ruijie 页面时，会自动使用 CAS 登录流程。`110.184.24.61` 是重定向后的 CAS/Ruijie 主机，不作为前端默认服务器选项。
+CT/Ruijie 推荐把 `Authentication Host` 保持为默认的 HTTP captive portal 探测地址：`http://connectivitycheck.gstatic.com/generate_204`。客户端会让校园网接入网关拦截普通 HTTP 请求，从而获得当前真实的 portal 重定向链；当重定向链进入新版 CAS/Ruijie 页面时，会自动使用 CAS 登录流程。旧的固定入口 `172.25.249.64` 仅保留为兼容选项，不再作为默认值。`110.184.24.61` 是重定向后的 CAS/Ruijie 主机，不作为前端默认服务器选项。
 
 需要开机自动认证时，同时启用：
 
@@ -106,7 +106,7 @@ apk add --allow-untrusted --upgrade ./luci-app-uestc-authclient_*.apk
 apk add --allow-untrusted --upgrade ./luci-i18n-uestc-authclient-zh-cn_*.apk
 ```
 
-`/etc/config/uestc_authclient` 被声明为配置文件，正常升级不会覆盖已有账号、密码和会话配置。新版包会把旧的 `ct_ruijie` / `qsh-telecom-ruijie` 认证类型归一为 `ct`，并把默认误设为 `110.184.24.61` 的电信/Ruijie 入口改回 `172.25.249.64`。
+`/etc/config/uestc_authclient` 被声明为配置文件，正常升级不会覆盖已有账号、密码和会话配置。新版包会把旧的 `ct_ruijie` / `qsh-telecom-ruijie` 认证类型归一为 `ct`，并把旧默认 `172.25.249.64` 或误设为 `110.184.24.61` 的电信/Ruijie 入口迁移为默认 HTTP captive portal 探测地址。自定义入口地址会保留。
 
 ## Releases 发布规律
 

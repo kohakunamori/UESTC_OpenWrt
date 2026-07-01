@@ -213,6 +213,7 @@ test -x /usr/bin/uestc_authclient_manager.sh
 overview=/www/luci-static/resources/view/uestc-authclient/overview.js
 test -f "${overview}"
 grep -q "CT authentication method (qsh-telecom-autologin)" "${overview}"
+grep -q "http://connectivitycheck.gstatic.com/generate_204" "${overview}"
 ! grep -q "o.value('qsh-telecom-ruijie'" "${overview}"
 ! grep -q "110.184.24.61" "${overview}"
 
